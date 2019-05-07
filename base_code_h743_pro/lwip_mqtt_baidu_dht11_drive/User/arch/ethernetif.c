@@ -296,9 +296,6 @@ static struct pbuf * low_level_input(struct netif *netif)
   if(HAL_ETH_GetRxDataBuffer(&EthHandle, &RxBuff) == HAL_OK) 
   {
     HAL_ETH_GetRxDataLength(&EthHandle, &framelength);
-    
-    /* Build Rx descriptor to be ready for next data reception */
-    HAL_ETH_BuildRxDescriptors(&EthHandle);
 
     /* Invalidate data cache for ETH Rx Buffers */
     SCB_InvalidateDCache_by_Addr((uint32_t *)Rx_Buff, (ETH_RX_DESC_CNT*ETH_RX_BUFFER_SIZE));
@@ -308,7 +305,6 @@ static struct pbuf * low_level_input(struct netif *netif)
     
     p = pbuf_alloced_custom(PBUF_RAW, framelength, PBUF_REF, custom_pbuf, RxBuff.buffer, ETH_RX_BUFFER_SIZE);
 
-   
   }
   
   return p;
@@ -331,29 +327,13 @@ void ethernetif_input(void *pParams) {
   {
     if(xSemaphoreTake( s_xSemaphore, portMAX_DELAY ) == pdTRUE)
     {
-//      do
-//      {
-//        LOCK_TCPIP_CORE();
-//        
-//        p = low_level_input( netif );
-//        if (p != NULL)
-//        {
-//          if (netif->input( p, netif) != ERR_OK )
-//          {
-//            p = NULL;
-//            pbuf_free(p);
-//          }
-//        }
-
-//        UNLOCK_TCPIP_CORE();
-//        
-//      }while(p!=NULL);
-//    }
-//      LOCK_TCPIP_CORE();
       /* move received packet into a new pbuf */
       taskENTER_CRITICAL();
 TRY_GET_NEXT_FRAGMENT:
       p = low_level_input(netif);
+      
+      /* Build Rx descriptor to be ready for next data reception */
+      HAL_ETH_BuildRxDescriptors(&EthHandle);
       
       taskEXIT_CRITICAL();
       /* points to packet payload, which starts with an Ethernet header */
@@ -373,8 +353,6 @@ TRY_GET_NEXT_FRAGMENT:
         }
         taskEXIT_CRITICAL();
       }
-//      HAL_ETH_BuildRxDescriptors(&EthHandle);
-//      UNLOCK_TCPIP_CORE();
     }
 	}
 }
